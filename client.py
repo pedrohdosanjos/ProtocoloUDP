@@ -3,7 +3,7 @@ import hashlib
 import random
 import time
 
-CHUNK_SIZE = 1024  # Tamanho de cada chunk em bytes
+CHUNK_SIZE = 32768  # Tamanho de cada chunk em bytes
 # Escolher um tamanho de chunk próximo, mas abaixo do MTU, como 1024 bytes.
 # Ele evita fragmentação, melhora a confiabilidade da transmissão e mantém a eficiência.
 # Esse valor pode ser ajustado dependendo da rede específica, mas sempre considerar o MTU para evitar fragmentação.
@@ -32,7 +32,9 @@ def start_udp_client(server_ip, server_port):
 
         while not complete:
             try:
+                print(f"Aguardando resposta do servidor {server_ip}:{server_port}...\n")
                 data, _ = client_socket.recvfrom(2048)
+                print(f"Recebido: {data[:30]}\n")
                 if data == b"END":
                     print("Transferência do arquivo concluída.\n")
                     complete = True
@@ -63,44 +65,53 @@ def start_udp_client(server_ip, server_port):
 
             except socket.timeout:
                 print("Timeout: aguardando pacotes restantes...")
+                complete = True
 
-        # Verifica se há chunks faltantes
-        if not complete and received_chunks:
-            expected_chunks = max(received_chunks.keys()) + 1
-            missing_chunks.update(
-                set(range(expected_chunks)) - set(received_chunks.keys())
-            )
+            # Verifica se há chunks faltantes
+            if not complete and received_chunks:
+                expected_chunks = max(received_chunks.keys()) + 1
+                missing_chunks.update(
+                    set(range(expected_chunks)) - set(received_chunks.keys())
+                )
 
-        elif not received_chunks:
-            print(f"Erro: Não foi possível receber o arquivo '{filename}'.\n")
-            continue
+            elif not received_chunks:
+                print(f"Erro: Não foi possível receber o arquivo '{filename}'.\n")
+                continue
 
         # Pedindo retransmissão para os chunks faltantes
-        if missing_chunks:
+        while missing_chunks:
             print(
                 f"Chunks faltantes: {sorted(missing_chunks)}. Solicitando retransmissão...\n"
             )
-            for chunk_num in missing_chunks:
-                retry_request = f"RETRY {filename} {chunk_num}"
-                client_socket.sendto(retry_request.encode(), (server_ip, server_port))
 
+            retry_request = f"GET {filename}"
+            client_socket.sendto(retry_request.encode(), (server_ip, server_port))
+
+            complete = False
+            while not complete:
                 try:
                     data, _ = client_socket.recvfrom(2048)
-                    header, chunk = data.split(b"&&&", 2)
-                    received_chunk_num, chunk_checksum = header.decode().split(r"%%%")
-                    received_chunk_num = int(received_chunk_num)
-
-                    # Verifica se o chunk é o esperado e se passou no checksum
-                    if (
-                        received_chunk_num == chunk_num
-                        and checksum(chunk) == chunk_checksum
-                    ):
-                        received_chunks[chunk_num] = chunk
-                        missing_chunks.remove(chunk_num)
+                    if data == b"END":
+                        complete = True
+                    elif data.startswith(b"ERRO"):
+                        print(data.decode())
+                        break
+                    elif data.startswith(b"OK"):
+                        continue
                     else:
-                        print(
-                            f"Erro de checksum no chunk {chunk_num} durante retransmissão.\n"
+                        header, chunk = data.split(b"&&&", 2)
+                        received_chunk_num, chunk_checksum = header.decode().split(
+                            r"%%%"
                         )
+                        received_chunk_num = int(received_chunk_num)
+
+                        # Verifica se o chunk é o esperado e se passou no checksum
+                        if (
+                            received_chunk_num in missing_chunks
+                            and checksum(chunk) == chunk_checksum
+                        ):
+                            received_chunks[received_chunk_num] = chunk
+                            missing_chunks.remove(received_chunk_num)
                 except socket.timeout:
                     print(f"Timeout na retransmissão do chunk {chunk_num}\n")
 
