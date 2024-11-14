@@ -4,8 +4,8 @@ import hashlib
 import random
 import time
 
-CHUNK_SIZE = 512  # Tamanho de cada chunk em bytes
-# Escolher um tamanho de chunk próximo, mas abaixo do MTU, como 512 bytes.
+CHUNK_SIZE = 1024  # Tamanho de cada chunk em bytes
+# Escolher um tamanho de chunk próximo, mas abaixo do MTU, como 1024 bytes.
 # Ele evita fragmentação, melhora a confiabilidade da transmissão e mantém a eficiência.
 # Esse valor pode ser ajustado dependendo da rede específica, mas sempre considerar o MTU para evitar fragmentação.
 
@@ -60,7 +60,7 @@ def start_udp_client(server_ip, server_port):
 
         while not complete:
             try:
-                data, _ = client_socket.recvfrom(1024)
+                data, _ = client_socket.recvfrom(2048)
                 if data == b"END":
                     print("Transferência do arquivo concluída.\n")
                     complete = True

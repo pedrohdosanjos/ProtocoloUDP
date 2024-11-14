@@ -4,8 +4,8 @@ import os
 import hashlib
 from time import sleep
 
-CHUNK_SIZE = 512  # Tamanho de cada chunk em bytes
-DISCARD_PROBABILITY = 1  # 0,1% de chance de descartar um chunk (ajustável)
+CHUNK_SIZE = 1024  # Tamanho de cada chunk em bytes
+DISCARD_PROBABILITY = 1  # 1% de chance de descartar um chunk (ajustável)
 
 
 def checksum(data):
@@ -29,7 +29,7 @@ def start_udp_server():
     print("Servidor UDP pronto na porta 5000\n")
 
     while True:
-        message, client_address = server_socket.recvfrom(512)
+        message, client_address = server_socket.recvfrom(1024)
         request = message.decode()
 
         if request.startswith("GET"):
