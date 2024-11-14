@@ -4,7 +4,7 @@ import os
 import hashlib
 
 CHUNK_SIZE = 1024  # Tamanho de cada chunk em bytes
-DISCARD_PROBABILITY = 0.1  # 10% de chance de descartar um chunk (ajustável)
+DISCARD_PROBABILITY = 0.01  # 10% de chance de descartar um chunk (ajustável)
 
 
 def checksum(data):
@@ -45,7 +45,7 @@ def start_udp_server():
                     # Numerar os pedaços é essencial para que o cliente consiga remontá-los na ordem correta e detectar pacotes perdidos.
 
                     # Adicionando lógica de descarte aleatório para simular perda de pacotes
-                    if random.random() < DISCARD_PROBABILITY:
+                    if random.uniform(0, 100) < DISCARD_PROBABILITY:
                         print(
                             f"[DESCARTANDO] Chunk {chunk_num} descartado aleatoriamente.\n"
                         )
