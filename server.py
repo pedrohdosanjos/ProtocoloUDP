@@ -2,9 +2,10 @@ import random
 import socket
 import os
 import hashlib
+from time import sleep
 
-CHUNK_SIZE = 1024  # Tamanho de cada chunk em bytes
-DISCARD_PROBABILITY = 0.01  # 10% de chance de descartar um chunk (ajustável)
+CHUNK_SIZE = 512  # Tamanho de cada chunk em bytes
+DISCARD_PROBABILITY = 1  # 0,1% de chance de descartar um chunk (ajustável)
 
 
 def checksum(data):
@@ -28,7 +29,7 @@ def start_udp_server():
     print("Servidor UDP pronto na porta 5000\n")
 
     while True:
-        message, client_address = server_socket.recvfrom(1024)
+        message, client_address = server_socket.recvfrom(512)
         request = message.decode()
 
         if request.startswith("GET"):
@@ -42,10 +43,13 @@ def start_udp_server():
                     chunk_checksum = checksum(chunk)
 
                     packet = f"{chunk_num}%%%{chunk_checksum}&&&".encode() + chunk
-                    # Numerar os pedaços é essencial para que o cliente consiga remontá-los na ordem correta e detectar pacotes perdidos.
+                    # Numerar os pedaços é essencial para que o cliente consiga remontá-los
+                    # na ordem correta e detectar pacotes perdidos.
 
                     # Adicionando lógica de descarte aleatório para simular perda de pacotes
-                    if random.uniform(0, 100) < DISCARD_PROBABILITY:
+                    if random.uniform(
+                        0, 100
+                    ) < DISCARD_PROBABILITY and request.startswith("GET "):
                         print(
                             f"[DESCARTANDO] Chunk {chunk_num} descartado aleatoriamente.\n"
                         )
@@ -53,6 +57,7 @@ def start_udp_server():
                         continue
 
                     server_socket.sendto(packet, client_address)
+                    sleep(0.00001)  # Simula atraso na transmissão
                     chunk_num += 1
 
                 # Indica o fim da transmissão
